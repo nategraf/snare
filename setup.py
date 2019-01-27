@@ -1,11 +1,11 @@
 import setuptools
 
 setuptools.setup(
-    name='netcapture',
+    name='snare',
     description='Network capture and manipulation module',
-    packages=['netcapture'],
+    packages=['snare'],
     version='0.1.0',
-    url='https://github.com/nategraf/netcapture',
+    url='https://github.com/nategraf/snare',
 
     author='Victor "Nate" Graf',
     author_email="nategraf1@gmail.com",
