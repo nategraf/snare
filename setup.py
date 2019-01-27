@@ -1,17 +1,33 @@
 import setuptools
+import subprocess
+import os
+import re
+
+root = os.path.dirname(os.path.realpath(__file__))
+vexp = re.compile(r'v(\d+)(\.\d+)+(-\w+)?')
+
+def tag():
+   t = subprocess.check_output(('git', 'tag'), cwd=root).decode().strip()
+   if not vexp.fullmatch(t):
+       raise ValueError(f"current tag {t:s} is not a version number")
+   return t
+
+def readme():
+    with open(os.path.join(root, 'README.rst'), 'r') as f:
+        return f.read()
 
 setuptools.setup(
     name='snare',
     description='Network capture and manipulation module',
     packages=['snare'],
-    version='0.1.0',
+    version=tag().strip('v'),
     url='https://github.com/nategraf/snare',
 
     author='Victor "Nate" Graf',
     author_email="nategraf1@gmail.com",
     license='MIT',
 
-    long_description=open("README.rst", "r").read(),
+    long_description=readme(),
     long_description_content_type="text/x-rst",
     keywords=[],
 
