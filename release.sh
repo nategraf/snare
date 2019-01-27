@@ -3,12 +3,10 @@ set -e
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 
-if [ -z "$1" ]; then
-    echo "usage: release.sh <tag>" && exit 1
+if [ -n "$1" ]; then
+    git tag "$1"
+    git push --tag
 fi
-
-git tag "$1"
-git push --tag
 
 python setup.py sdist bdist_wheel
 twine upload dist/*
