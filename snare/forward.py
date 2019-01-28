@@ -4,8 +4,15 @@ from . import net
 import scapy.all as scapy
 import enum
 import logging
+import base64
 
 logger = logging.getLogger(__name__)
+
+def clear_chksums(pkt):
+    """Deletes IP, UDP, and TCP checksums from pkt, such that they are recalculated by Scapy"""
+    for layer in (scapy.IP, scapy.UDP, scapy.TCP):
+        if layer in pkt:
+            del pkt[layer].chksum
 
 class ForwarderModule(Module):
     """
@@ -53,29 +60,38 @@ class ForwarderModule(Module):
         return None
 
     def process(self, pkt):
-        if scapy.IP in pkt and scapy.Ether in pkt:
-            if pkt[scapy.Ether].dst == self.hwaddr and pkt[scapy.Ether].src != self.hwaddr:
-                if pkt[scapy.IP].dst in self.arpcache:
-                    hwdst = self.arpcache[pkt[scapy.IP].dst]
-                else:
-                    hwdst = self.nexthop(pkt[scapy.IP].dst)
+        # Drop packets that don't include Ethernet and IP.
+        if any(layer not in pkt for layer in (scapy.IP, scapy.Ether)):
+            return
 
-                if hwdst is None:
-                    logger.debug("Dropping packet %s > %s: next hop unknown", pkt[scapy.IP].src, pkt[scapy.IP].dst)
-                    return
+        # Drop packets for which we are the source or we are not the destination.
+        if pkt[scapy.Ether].dst != self.hwaddr and pkt[scapy.Ether].src == self.hwaddr:
+            return
 
-                pkt = pkt.copy()
-                pkt[scapy.Ether].dst = hwdst
+        # Determine the MAC address for the local destination or next hop.
+        if pkt[scapy.IP].dst in self.arpcache:
+            hwdst = self.arpcache[pkt[scapy.IP].dst]
+        else:
+            hwdst = self.nexthop(pkt[scapy.IP].dst)
 
-                # After having patched the dst MAC, but before patching the src, apply the filter
-                if self.filter is not None:
-                    pkt = self.filter(pkt)
+        if hwdst is None:
+            logger.debug("Dropping packet %s > %s: next hop unknown", pkt[scapy.IP].src, pkt[scapy.IP].dst)
+            return
 
-                if pkt is None:
-                    logger.debug("Filtered packet %s > %s", pkt[scapy.IP].src, pkt[scapy.IP].dst)
-                    return
+        pkt = pkt.copy()
+        pkt[scapy.Ether].dst = hwdst
 
-                if pkt is not None:
-                    pkt[scapy.Ether].src = self.hwaddr
-                    scapy.sendp(pkt, iface=self.iface)
-                    logger.debug("Forwarded packet %s > %s to %s", pkt[scapy.IP].src, pkt[scapy.IP].dst, pkt[scapy.Ether].dst)
+        # After having patched the dst MAC, but before patching the src, apply the filter
+        if self.filter is not None:
+            pkt = self.filter(pkt)
+
+        if pkt is None:
+            logger.debug("Filtered packet %s > %s", pkt[scapy.IP].src, pkt[scapy.IP].dst)
+            return
+
+        if pkt is not None:
+            pkt[scapy.Ether].src = self.hwaddr
+            clear_chksums(pkt) # TODO: investigate why this is needed, because it should not be (scapy bug?).
+            scapy.sendp(pkt, iface=self.iface)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Forwarded %s > %s to %s: %s", pkt[scapy.IP].src, pkt[scapy.IP].dst, pkt[scapy.Ether].dst, base64.b64encode(scapy.raw(pkt)).decode())
