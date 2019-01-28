@@ -2,6 +2,7 @@
 """
 Network address functions and an OpenVPN utility class.
 """
-from .net import *
+from .addr import *
 from .openvpn import *
 from .iptables import *
+from .route import *

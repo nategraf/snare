@@ -55,6 +55,12 @@ class Addr(metaclass=AddrMeta):
     def __invert__(self):
         return type(self)(int(self) ^ self.maxvalue)
 
+    def __hash__(self):
+        return hash(self.__class__) ^ int(self)
+
+    def __eq__(self, other):
+        return int(self) == int(other)
+
     # Conversions
     def __str__(self):
         if self._str is None:
@@ -88,10 +94,39 @@ class Ip(Addr):
 
     def slash(self):
         x, i = int(self), 0
+        if x == 0:
+            return 0
+
         while x & 0x1 == 0:
             x >>= 1
             i += 1
         return 32 - i
+
+class IpNet:
+    def __init__(self, ip, mask):
+        self.ip = Ip(ip)
+        self.mask = Ip(mask)
+
+    def network(self):
+        return self.ip & self.mask
+
+    def broadcast(self):
+        return self.ip | ~self.mask
+
+    def contains(self, ip):
+        return (Ip(ip) & self.mask) == self.network()
+
+    def __contains__(self, ip):
+        return self.contains(ip)
+
+    def cidr(self):
+        return "{!s}/{:d}".format(self.ip, self.mask.slash())
+
+    def __str__(self):
+        return self.cidr()
+
+    def __repr__(self):
+        return '<{0}.{1} {2!s}>'.format(__name__, type(self).__name__, self)
 
 class Mac(Addr):
     bytelen = 6
@@ -123,14 +158,10 @@ def ifmask(ifname):
 def ifhwaddr(ifname):
     return Mac(_ifctl(ifname, 0x8927)[18:24]) # SIOCGIFHWADDR
 
-def cidr(ip, mask):
-    return "{!s}/{:d}".format(ip, mask.slash())
-
 def parsecidr(ipnet):
     ipstr, maskstr = ipnet.split('/')
-    ip = Ip(ipstr)
-    mask = Ip(0xffffffff ^ ((0x00000001 << (32-int(maskstr)))-1))
-    return ip, mask
+    maskint = 0xffffffff ^ ((0x00000001 << (32-int(maskstr)))-1)
+    return IpNet(ipstr, maskint)
 
 def ifcidr(ifname):
-    return cidr(ifaddr(ifname), ifmask(ifname))
+    return IpNet(ifaddr(ifname), ifmask(ifname))
