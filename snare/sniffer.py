@@ -12,7 +12,7 @@ class Sniffer:
     This class uses the Scapy sniffer to collect packets off the wire. It then
     passes them to the modules for processing.
     """
-    def __init__(self, iface=None, processor=None, store=False, filter=None, quantum=0.25):
+    def __init__(self, iface, processor=None, store=False, filter=None, quantum=0.25):
         self.iface = iface
         self.processor = processor
         self.store = store
