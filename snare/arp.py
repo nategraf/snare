@@ -128,7 +128,7 @@ class ArpPoisonerModule(Module):
 
 class ArpMitmModule(Module):
     def __init__(self, filter=None, iface=None, hwaddr=None):
-        self.cache = ArpCacheModule(ignore=[hwaddr])
+        self.cache = ArpCacheModule(ignore=(hwaddr and [hwaddr]))
         self.poisoner = ArpPoisonerModule(self.cache.cache, iface=iface, hwaddr=hwaddr)
         self.forwarder = ForwarderModule(self.cache.cache, filter=filter, iface=iface, hwaddr=hwaddr)
         self.submodules = (self.cache, self.poisoner, self.forwarder)

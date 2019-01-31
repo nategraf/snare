@@ -19,7 +19,7 @@ def readme():
 setuptools.setup(
     name='snare',
     description='Network capture and manipulation module',
-    packages=['snare'],
+    packages=['snare', 'snare.net'],
     version=tag().strip('v'),
     url='https://github.com/nategraf/snare',
 
