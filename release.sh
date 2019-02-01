@@ -9,9 +9,10 @@ if [ -n "$1" ]; then
     git push --tag
 fi
 
-if [ -z "$(git tag -l --contains HEAD)" ]; then
+TAG="$(git tag -l --contains HEAD)"
+if [ -z "$TAG" ]; then
     devpi upload --formats sdist,bdist_wheel
 else
     python setup.py sdist bdist_wheel
-    twine upload --skip-existing $REPO dist/*
+    twine upload dist/*${TAG:1}*
 fi
