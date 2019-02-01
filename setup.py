@@ -8,6 +8,8 @@ vexp = re.compile(r'v(\d+)(\.\d+)+(-\w+)?')
 
 def tag():
    t = subprocess.check_output(('git', 'tag', '-l', '--contains', 'HEAD'), cwd=root).decode().strip()
+   if not t:
+       return "v0.0.dev0"
    if not vexp.fullmatch(t):
        raise ValueError(f"current tag {t:s} is not a version number")
    return t
