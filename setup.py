@@ -4,12 +4,13 @@ import os
 import re
 
 root = os.path.dirname(os.path.realpath(__file__))
-vexp = re.compile(r'v(\d+)(\.\d+)+(-\w+)?')
+vexp = re.compile(r'v(\d+)(\.\d+)+([.-]\w+)?')
+
+def cmd(*args):
+    return subprocess.check_output(args, cwd=root).decode().strip()
 
 def tag():
-   t = subprocess.check_output(('git', 'tag', '-l', '--contains', 'HEAD'), cwd=root).decode().strip()
-   if not t:
-       return "v0.0.dev0"
+   t = cmd('git', 'tag', '-l', '--contains', 'HEAD') or "v0.0.dev0"
    if not vexp.fullmatch(t):
        raise ValueError(f"current tag {t:s} is not a version number")
    return t
