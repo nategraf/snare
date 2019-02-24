@@ -118,7 +118,15 @@ class TcpFilter:
     def __init__(self, filter=None):
         if filter is not None:
             self.filter = filter
-        self.offsets = {}
+
+    @property
+    def offsets(self):
+        # Lazy initialize this field so subclasses don't need to call super().__init__()
+        try:
+            return self._offsets
+        except AttributeError:
+            self._offsets = {}
+            return self._offsets
 
     class Offset:
         def __init__(self):
