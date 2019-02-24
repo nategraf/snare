@@ -84,13 +84,14 @@ class ForwarderModule(Module):
 
         pkt = pkt.copy()
         pkt[scapy.Ether].dst = hwdst
+        src, dst = pkt[scapy.IP].src, pkt[scapy.IP].dst
 
         # After having patched the dst MAC, but before patching the src, apply the filter
         if self.filter is not None:
             pkt = self.filter(pkt)
 
         if pkt is None:
-            logger.debug("Filtered packet %s > %s", pkt[scapy.IP].src, pkt[scapy.IP].dst)
+            logger.debug("Filtered packet %s > %s", src, dst)
             return
 
         if pkt is not None:
