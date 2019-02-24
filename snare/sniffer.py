@@ -15,7 +15,7 @@ class Sniffer:
     This class uses the Scapy sniffer to collect packets off the wire. It then
     passes them to the modules for processing.
     """
-    def __init__(self, iface, processor=None, store=False, filter=None, quantum=0.25):
+    def __init__(self, iface, processor=None, store=False, filter=None, quantum=0.25, modules=None):
         self.iface = iface
         self.processor = processor
         self.store = store
@@ -31,6 +31,9 @@ class Sniffer:
         self._moduleslock = threading.RLock()
         self._newmodules = []
         self._activemodules = []
+
+        if modules is not None:
+            self.register(*modules)
 
     def register(self, *mods):
         """Add new modules to the sniffer"""
