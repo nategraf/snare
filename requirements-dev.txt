@@ -1,4 +1,13 @@
+# Release requirements.
 setuptools
 wheel
 twine
+
+# Test requirements.
+pytest
+
+# Documentation requirements.
+Sphinx~=3.0.1
+
+# Development utilities.
 IPython
