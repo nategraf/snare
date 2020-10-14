@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class StopSniffing(Exception):
-    """StopSniffing is raised while processing a packet to indicate stop the sniffer."""
+    """StopSniffing may raised while processing a packet to indicate stop the sniffer."""
 
 class Sniffer:
     """
@@ -16,6 +16,15 @@ class Sniffer:
     passes them to the modules for processing.
     """
     def __init__(self, iface, processor=None, store=False, filter=None, quantum=0.25, modules=None):
+        """
+        Arguments:
+            iface (str): Name of the interface to listen on.
+            processor (function(scapy.Packet)): Function to be called each time a packet is intercepted. The given packet is mutable.
+            store (bool): Whether to store sniffed packets or discard them
+            filter (str): pcap filter applied to the socket, such that only filtered packets will be processed. See `man pcap-filter` for more detail.
+            quantum (float): Interval, in seconds, to stop the sniffer to check the stop event.
+            modules (list(Module)): List of modules to launch the sniffer with.
+        """
         self.iface = iface
         self.processor = processor
         self.store = store
@@ -117,18 +126,14 @@ class Module:
         """
         Start when the sniffer starts or this module is added to a running sniffer.
         """
-        pass
 
     def process(self, pkt):
         """
         Process will be called for every packet recieved by the sniffer.
         Process may raise StopSniffing to signal that the sniffer should terminate.
         """
-        pass
 
     def stop(self):
         """
         Stop will be called when the sniffer stops.
         """
-        pass
-

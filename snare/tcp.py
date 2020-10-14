@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TcpProxyModule(Module):
     """
-    TcpProxyModule provides a TCP proxing mechanism using OS sockets, and therefore the kernel's TCP stack
+    TcpProxyModule provides a TCP proxing mechanism using OS sockets, and therefore the kernel's TCP stack.
     The handler provided when constructing this will be called with (client-facing socket, server-facing socket) as args
     """
     def __init__(self, handler, bind, target=None, source=None, backlog=16, timeout=30):
@@ -165,37 +165,43 @@ class TcpFilter:
         return pkt
 
     def __call__(self, pkt):
-        if all(layer in pkt for layer in (scapy.Ether, scapy.IP, scapy.TCP)):
-            seq, ack = pkt[scapy.TCP].seq, pkt[scapy.TCP].ack
-
-            key = TcpFlowKey.frompkt(pkt)
-            if pkt[scapy.TCP].flags & TcpFlags.SYN or key not in self.offsets:
-                self.offsets[key] = self.Offset()
-            offset = self.offsets[key]
-
-            before = len(pkt[scapy.Raw].load) if scapy.Raw in pkt else 0
-            pkt = self.filter(pkt)
-            if pkt is None:
-                # The packet, and its data, was dropped
-                offset.add(seq, -before)
-            else:
-                after = len(pkt[scapy.Raw].load) if scapy.Raw in pkt else 0
-                diff = after - before
-                if diff != 0:
-                    offset.add(seq, diff)
-
-                pkt[scapy.TCP].seq = offset.getseq(seq)
-
-                inverse_key = key.inverse()
-                if pkt[scapy.TCP].flags & TcpFlags.ACK and inverse_key in self.offsets:
-                    pkt[scapy.TCP].ack = self.offsets[inverse_key].getack(ack)
-
-                # Force checksum recalculation
-                pkt[scapy.IP].len += diff
-                del pkt[scapy.TCP].chksum
-                del pkt[scapy.IP].chksum
-
+        if not all(layer in pkt for layer in (scapy.Ether, scapy.IP, scapy.TCP)):
             return pkt
+
+        # Get the TCP seq and ack numbers before the packet is modified.
+        seq, ack = pkt[scapy.TCP].seq, pkt[scapy.TCP].ack
+
+        # Retreive any known running offsets for the given flow.
+        key = TcpFlowKey.frompkt(pkt)
+        if pkt[scapy.TCP].flags & TcpFlags.SYN or key not in self.offsets:
+            self.offsets[key] = self.Offset()
+        offset = self.offsets[key]
+
+        before = len(pkt[scapy.Raw].load) if scapy.Raw in pkt else 0
+        pkt = self.filter(pkt)
+        if pkt is None:
+            # The packet, and its data, was dropped.
+            offset.add(seq, -before)
+            return None
+
+        after = len(pkt[scapy.Raw].load) if scapy.Raw in pkt else 0
+        diff = after - before
+        if diff != 0:
+            offset.add(seq, diff)
+
+        pkt[scapy.TCP].seq = offset.getseq(seq)
+
+        # Determine is the ack numbers need to be adjusted by checking the reverse of the stream mapping.
+        inverse_key = key.inverse()
+        if pkt[scapy.TCP].flags & TcpFlags.ACK and inverse_key in self.offsets:
+            pkt[scapy.TCP].ack = self.offsets[inverse_key].getack(ack)
+
+        # Force Scapy to recalculate the checksum.
+        pkt[scapy.IP].len += diff
+        del pkt[scapy.TCP].chksum
+        del pkt[scapy.IP].chksum
+
+        return pkt
 
 def tcpfilter(filter):
     return TcpFilter(filter)
