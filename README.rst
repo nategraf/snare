@@ -15,3 +15,15 @@ Suppose you hate the string "search" and you want to MitM your local network, re
 
 .. literalinclude:: ../example.py
    :language: python
+
+Development
+-----------
+
+Testing
+~~~~~~~
+
+Tests are written in `pytest` and can be run with the `pytest` command.
+
+.. note::
+   Testing is pretty spare at the momment. In order to really test things, a testing framework that
+   can feed in pcap files and evaluate the repsonse is required.

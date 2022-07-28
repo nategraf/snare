@@ -1,13 +1,14 @@
 # Release requirements.
-setuptools
-wheel
-twine
+setuptools~=63.2.0
+wheel~=0.37.1
+twine~=4.0.1
 
 # Test requirements.
-pytest
+pytest~=7.1.2
 
 # Documentation requirements.
 Sphinx~=3.0.1
+Jinja2==3.0.3
 
 # Development utilities.
-IPython
+IPython~=8.4.0
