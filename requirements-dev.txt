@@ -2,6 +2,8 @@
 setuptools~=63.2.0
 wheel~=0.37.1
 twine~=4.0.1
+devpi-client~=6.0.0
+devpi-server~=6.5.1
 
 # Test requirements.
 pytest~=7.1.2
