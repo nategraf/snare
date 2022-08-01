@@ -19,15 +19,14 @@ class AddrMeta(type):
         return (0x1 << (cls.bytelen * 8)) - 1
 
 class Addr(metaclass=AddrMeta):
-    """Generic network address with support for various conversions and operators"""
+    """Generic network address with support for various conversions and operators
+
+    Arguments:
+        addr (str|int|bytes|Addr): Address to create in string, int or bytes representation.
+    """
     bytelen = 0
 
     def __init__(self, addr):
-        """Create an address from string, int, or bytes
-
-        Args:
-            addr (str|int|bytes|Addr): Address to create in string, int or bytes representation.
-        """
         self._str = None
         self._int = None
         self._bytes = None

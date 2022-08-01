@@ -112,7 +112,7 @@ class TcpFlowKey:
 class TcpFilter:
     """
     TcpFilter wraps a packet filter and adjusts seq and ack numbers to account for altered data lengths
-    The wrapped filter should not change the seq or ack number, as they wil be reset
+    The wrapped filter should not change the seq or ack number, as they will be reset
     The wrapped filter may drop a packet by returning None in which case nothing will be forwarded
     """
     def __init__(self, filter=None):
@@ -204,4 +204,8 @@ class TcpFilter:
         return pkt
 
 def tcpfilter(filter):
+    """
+    Decorator to create a TcpFilter function for use in modifying TCP streams.
+    Wraps a function that accepts a packet and returns a single packet, list of packets, or None.
+    """
     return TcpFilter(filter)

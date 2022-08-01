@@ -14,17 +14,19 @@ class Sniffer:
 
     This class uses the Scapy sniffer to collect packets off the wire. It then
     passes them to the modules for processing.
+
+    Arguments:
+        iface (str): Name of the interface to listen on.
+        processor (function(scapy.Packet)): Function to be called each time a packet is
+            intercepted. The given packet is mutable.
+        store (bool): Whether to store sniffed packets or discard them. If True, packets will be
+            collected in the sniffer.packets field.
+        filter (str): pcap filter applied to the socket, such that only filtered packets will be
+            processed. See `man pcap-filter` for more details on pcap filters.
+        quantum (float): Interval, in seconds, to stop the sniffer to check the stop event.
+        modules (list(Module)): List of modules to launch the sniffer with.
     """
     def __init__(self, iface, processor=None, store=False, filter=None, quantum=0.25, modules=None):
-        """
-        Arguments:
-            iface (str): Name of the interface to listen on.
-            processor (function(scapy.Packet)): Function to be called each time a packet is intercepted. The given packet is mutable.
-            store (bool): Whether to store sniffed packets or discard them
-            filter (str): pcap filter applied to the socket, such that only filtered packets will be processed. See `man pcap-filter` for more detail.
-            quantum (float): Interval, in seconds, to stop the sniffer to check the stop event.
-            modules (list(Module)): List of modules to launch the sniffer with.
-        """
         self.iface = iface
         self.processor = processor
         self.store = store

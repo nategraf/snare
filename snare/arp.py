@@ -15,13 +15,12 @@ class ArpCacheModule(Module):
     ArpCacheModule listens for ARP messages and provides a cache of the ARP associations seen on the network.
     It ignores ARP messages sent from this host and any other hosts specified in ``ignore``,
     in order to avoid self-poisoning of the ARP cache when sending out spoofed ARP messsages.
+
+    Arguments:
+        igonre (set(str)): A set of MAC addresses. ARP messages with a source in ``ignore``
+            will be ignored for building the ARP cache. Automatically includes the sniffer interface.
     """
     def __init__(self, ignore=None):
-        """
-        Args:
-            igonre (set(str)): A set of MAC addresses. ARP messages with a source in ``ignore``
-                will be ignored for building the ARP cache. Automatically includes the sniffer interface.
-        """
         self.sniffer = None
         self.ignore = set() if ignore is None else set(ignore)
         self.cache = {}
@@ -55,18 +54,17 @@ class ArpPoisonerModule(Module):
     """
     ArpPoisonerModule will send out spoofed ARP messages at regular intervals to poison the network.
     It also starts by sending out an arping to all targets to see who is on the network and populate the cache.
+
+    Args:
+        arpcache (mapping(str, str)): Mapping of MAC addresses to IP addresses.
+        iface (str): Interface name over which ARP messages should be sent. Defaults to sniffer interface.
+        hwaddr (str): Source MAC address to set on outgoing messages. Defaults to interface MAC address.
+        target (scapy.Net): A Scapy network object designating targets for poisoning by IP. Defaults to interface subnet.
+        impersonate (scapy.Net): A Scapy network object designating targets for impersonation by IP. Defaults to interface subnet.
+        poison_interval (float): Interval, in seconds, for periodically sending poinson messages.
+        ping_interval (float): Interval, in seconds, for periodically scanning for targets.
     """
     def __init__(self, arpcache, iface=None, hwaddr=None, target=None, impersonate=None, poison_interval=2, ping_interval=30):
-        """
-        Args:
-            arpcache (mapping(str, str)): Mapping of MAC addresses to IP addresses.
-            iface (str): Interface name over which ARP messages should be sent. Defaults to sniffer interface.
-            hwaddr (str): Source MAC address to set on outgoing messages. Defaults to interface MAC address.
-            target (scapy.Net): A Scapy network object designating targets for poisoning by IP. Defaults to interface subnet.
-            impersonate (scapy.Net): A Scapy network object designating targets for impersonation by IP. Defaults to interface subnet.
-            poison_interval (float): Interval, in seconds, for periodically sending poinson messages.
-            ping_interval (float): Interval, in seconds, for periodically scanning for targets.
-        """
         self.arpcache = arpcache
         self.iface = iface
         self.poison_interval = poison_interval
@@ -166,15 +164,14 @@ class ArpPoisonerModule(Module):
 class ArpMitmModule(Module):
     """ArpMitmModule uses ARP poinsoning to MitM the network on the given interface.
     This module combines the ARP cache, ARP poisoner, and forwarder modules.
+
+    Arguments:
+        filter (function(scapy.Packet) -> scapy.Packet): Filter, used by the forwarder, to modify or drop packets.
+            Defaults to forwarding all packets, modifying only the source MAC address.
+        iface (str): Interface name to execute the attack on. Defaults to the sniffer interface.
+        hwaddr (str): MAC address to use for outgoing packets.
     """
     def __init__(self, filter=None, iface=None, hwaddr=None):
-        """
-        Args:
-            filter (function(scapy.Packet) -> scapy.Packet): Filter, used by the forwarder, to modify or drop packets.
-                Defaults to forwarding all packets, modifying only the source MAC address.
-            iface (str): Interface name to execute the attack on. Defaults to the sniffer interface.
-            hwaddr (str): MAC address to use for outgoing packets.
-        """
         self.cache = ArpCacheModule(ignore=(hwaddr and [hwaddr]))
         self.poisoner = ArpPoisonerModule(self.cache, iface=iface, hwaddr=hwaddr)
         self.forwarder = ForwarderModule(self.cache, filter=filter, iface=iface, hwaddr=hwaddr)

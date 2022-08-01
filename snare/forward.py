@@ -91,7 +91,7 @@ class ForwarderModule(Module):
             pkt = self.filter(pkt)
 
         if pkt is None:
-            logger.debug("Filtered packet %s > %s", src, dst)
+            logger.debug("Dropping packet packet %s > %s: filter returned None", src, dst)
             return
 
         if pkt is not None:
