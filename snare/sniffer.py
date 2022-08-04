@@ -1,7 +1,8 @@
 # coding: utf-8
-import scapy.all as scapy
-import threading
 import logging
+import scapy.all as scapy
+import signal
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,11 @@ class Sniffer:
 
     def run(self):
         """Run the sniffer on the current thread, blocking until it terminates"""
+
+        # If we are running on the main thread, install a handler for sigint.
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGINT, self.sigint_handler)
+
         try:
             self._l2socket = scapy.conf.L2listen(iface=self.iface, filter=self.filter)
 
@@ -117,6 +123,14 @@ class Sniffer:
         return self
 
     def __exit__(self, *args, **kwargs):
+        self.stop()
+
+    def sigint_handler(self, signum, frame):
+        """
+        Handler for SIGINT to install when running on the main thread.
+        Used to avoid an issue with using scapy as a library where the system will not respond to
+        SIGINT and so is hard to stop.
+        """
         self.stop()
 
 class Module:
