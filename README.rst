@@ -8,7 +8,7 @@ These classes are based on Scapy and provide a convenient way to interact with a
 The advanced functions such as ARP poisoning, packet forwarding, and analysis are decomposed into modules to allow
 for greater flexibility and flexibility. Look at the constructed strategies for examples of how to compose the modules.
 
-Docs are hosted on [Read the Docs](https://network-snare.readthedocs.io/en/latest/)
+Docs are hosted on `Read the Docs <https://network-snare.readthedocs.io/en/latest/>`_
 
 Example
 -------

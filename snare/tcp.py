@@ -13,6 +13,22 @@ class TcpProxyModule(Module):
     """
     TcpProxyModule provides a TCP proxing mechanism using OS sockets, and therefore the kernel's TCP stack.
     The handler provided when constructing this will be called with (client-facing socket, server-facing socket) as args
+
+    :param handler: Handler function that will be called each time a connection is received by the
+        proxy. Each invocation of the handler will be passed a socket open to the client (i.e. the
+        peer that initiated the connection) and a socket open to the server (i.e. intended recipient
+        of the connection)
+    :type handler: function(socket.socket, socket.socket)
+    :param bind: IP address and port number to listen for incoming TCP connections on.
+    :type bind: tuple(str, int)
+    :param target: Host to open a connection to when a client connection is received.
+    :type target: tuple(str, int), optional
+    :param source: Source IP address and port to use for new connections.
+    :type source: tuple(str, int), optional
+    :param backlog: Maximum number of connections to keep accept into the backlog.
+    :type backlog: int, optional
+    :param timeout: Timeout, in seconds, for opening a connection to the target.
+    :type timeout: int, optional
     """
     def __init__(self, handler, bind, target=None, source=None, backlog=16, timeout=30):
         self.handler = handler
@@ -83,6 +99,7 @@ class TcpFlags(enum.IntEnum):
 
 class TcpFlowKey:
     """TcpFlowKey can be used to uniquely identify a TCP flow by source and destination IP address and port"""
+
     @classmethod
     def frompkt(cls, pkt):
         ip, tcp = pkt[scapy.IP], pkt[scapy.TCP]
@@ -114,13 +131,20 @@ class TcpFilter:
     TcpFilter wraps a packet filter and adjusts seq and ack numbers to account for altered data lengths
     The wrapped filter should not change the seq or ack number, as they will be reset
     The wrapped filter may drop a packet by returning None in which case nothing will be forwarded
+
+    :param filter: Filter function to use for packets being passed through this filter.
+        If provided, overrides the filter function defined on the class.
+    :type filter: function(scapy.packet.Packet) -> scapy.packet.Packet or None, optional
     """
+
     def __init__(self, filter=None):
         if filter is not None:
             self.filter = filter
 
     @property
     def offsets(self):
+        """A dictionary of offsets indicating how seq and ack numbers need to be adjusted."""
+
         # Lazy initialize this field so subclasses don't need to call super().__init__()
         try:
             return self._offsets
@@ -161,7 +185,10 @@ class TcpFilter:
                 self.list.insert(0, new)
 
     def filter(self, pkt):
-        """filter should be overriden if TcpFilter is subclassed"""
+        """
+        Filter function to use for packets being passed through this filter.
+        Should be overriden if TcpFilter is subclassed
+        """
         return pkt
 
     def __call__(self, pkt):

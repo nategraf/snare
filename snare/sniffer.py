@@ -16,16 +16,39 @@ class Sniffer:
     This class uses the Scapy sniffer to collect packets off the wire. It then
     passes them to the modules for processing.
 
-    Arguments:
-        iface (str): Name of the interface to listen on.
-        processor (function(scapy.Packet)): Function to be called each time a packet is
-            intercepted. The given packet is mutable.
-        store (bool): Whether to store sniffed packets or discard them. If True, packets will be
-            collected in the sniffer.packets field.
-        filter (str): pcap filter applied to the socket, such that only filtered packets will be
-            processed. See `man pcap-filter` for more details on pcap filters.
-        quantum (float): Interval, in seconds, to stop the sniffer to check the stop event.
-        modules (list(Module)): List of modules to launch the sniffer with.
+    :Example:
+
+    >>> import snare
+    ...
+    >>> def show_pkt(pkt):
+    ...     print(pkt.summary())
+    ...     return pkt
+    ...
+    >>> sniffer = snare.Sniffer(
+    ...     iface='tap0',
+    ...     modules=[snare.ArpMitmModule(filter=show_pkt)]
+    ... )
+    ...
+    >>> # Run the sniffer in background thread with:
+    >>> # sniffer.start()
+    >>> # Or run it blocking on the current thread with:
+    >>> # sniffer.run()
+
+    :param iface: Name of the interface to listen on.
+    :type iface: str
+    :param processor: Function to be called each time a packet is intercepted.
+        The given packet is mutable.
+    :type processor: function(scapy.Packet), optional
+    :param store: Whether to store sniffed packets or discard them. If True, packets will be
+        collected in the sniffer.packets field.
+    :type store: bool, optional
+    :param filter: pcap filter applied to the socket, such that only filtered packets will
+        be processed. See `man pcap-filter` for more details on pcap filters.
+    :type filter: str, optional
+    :param quantum: Interval, in seconds, to stop the sniffer to check the stop event.
+    :type quantum: float, optional
+    :param modules: List of modules to launch the sniffer with.
+    :type modules: list(Module), optional
     """
     def __init__(self, iface, processor=None, store=False, filter=None, quantum=0.25, modules=None):
         self.iface = iface
@@ -54,7 +77,7 @@ class Sniffer:
             self._newmodules.extend(mods)
 
     def process(self, pkt):
-        """Process the given packet through each active module, and self.processor"""
+        """Process the given packet through each active module, and ``self.processor``"""
         with self._moduleslock:
             for mod in self._activemodules:
                 try:
@@ -73,7 +96,7 @@ class Sniffer:
 
         # If we are running on the main thread, install a handler for sigint.
         if threading.current_thread() is threading.main_thread():
-            signal.signal(signal.SIGINT, self.sigint_handler)
+            signal.signal(signal.SIGINT, self._sigint_handler)
 
         try:
             self._l2socket = scapy.conf.L2listen(iface=self.iface, filter=self.filter)
@@ -100,7 +123,7 @@ class Sniffer:
                 self._l2socket = None
 
     def start(self):
-        """Start the sniffer on a new thread"""
+        """Start the sniffer on a new background thread"""
         self._stopevent.clear()
         if self._thread is None or not self._thread.is_alive():
             with self._moduleslock:
@@ -110,7 +133,7 @@ class Sniffer:
             self._thread.start()
 
     def stop(self):
-        """Signal the sniffer to stop terminate"""
+        """Signal the sniffer to stop"""
         self._stopevent.set()
 
     def join(self):
@@ -125,17 +148,17 @@ class Sniffer:
     def __exit__(self, *args, **kwargs):
         self.stop()
 
-    def sigint_handler(self, signum, frame):
+    def _sigint_handler(self, signum, frame):
         """
-        Handler for SIGINT to install when running on the main thread.
+        Handler for ``SIGINT`` to install when running on the main thread.
         Used to avoid an issue with using scapy as a library where the system will not respond to
-        SIGINT and so is hard to stop.
+        ``SIGINT`` and so is hard to stop.
         """
         self.stop()
 
 class Module:
     """
-    Module provides a feature on top of the sniffing platform.
+    Module provides functionalies on top of the sniffing platform.
     User defined modules should inherit from this class.
     """
     def start(self, sniffer):

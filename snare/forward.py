@@ -8,12 +8,6 @@ import base64
 
 logger = logging.getLogger(__name__)
 
-def clear_chksums(pkt):
-    """Deletes IP, UDP, and TCP checksums from pkt, such that they are recalculated by Scapy"""
-    for layer in (scapy.IP, scapy.UDP, scapy.TCP):
-        if layer in pkt:
-            del pkt[layer].chksum
-
 class ForwarderModule(Module):
     """
     ForwarderModule forwards packets received by the sniffer and in the ARP cache, after applying a filter.
@@ -100,3 +94,14 @@ class ForwarderModule(Module):
             scapy.sendp(pkt, iface=self.iface)
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("Forwarded %s > %s to %s: %s", pkt[scapy.IP].src, pkt[scapy.IP].dst, pkt[scapy.Ether].dst, base64.b64encode(scapy.raw(pkt)).decode())
+
+def clear_chksums(pkt):
+    """
+    Deletes IP, UDP, and TCP checksums from pkt, such that they are recalculated by Scapy
+
+    :param pkt: Packet for which to clear checksums.
+    :type pkt: scapy.packet.Packet
+    """
+    for layer in (scapy.IP, scapy.UDP, scapy.TCP):
+        if layer in pkt:
+            del pkt[layer].chksum

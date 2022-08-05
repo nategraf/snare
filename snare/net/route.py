@@ -31,6 +31,7 @@ def _parseword(word):
     return int.from_bytes(bytes.fromhex(word), byteorder='little')
 
 def routes():
+    """Retrieve routes from the system"""
     result = []
     with open('/proc/net/route', 'r') as file:
         for line in file:

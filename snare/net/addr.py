@@ -21,8 +21,8 @@ class AddrMeta(type):
 class Addr(metaclass=AddrMeta):
     """Generic network address with support for various conversions and operators
 
-    Arguments:
-        addr (str|int|bytes|Addr): Address to create in string, int or bytes representation.
+    :param addr: Address to create in string, int or bytes representation.
+    :type addr: str|int|bytes|Addr
     """
     bytelen = 0
 
@@ -125,8 +125,8 @@ class IpNet:
     def contains(self, ip):
         """Determines if the given address is in this subnet
 
-        Args:
-            ip (Ip): IPv4 to check if contained in this subnet.
+        :param ip: IPv4 to check if contained in this subnet.
+        :type ip: Ip
         """
         return (Ip(ip) & self.mask) == self.network()
 
@@ -168,48 +168,52 @@ def _ifctl(ifname, code):
 def ifaddr(ifname):
     """Retrieves the IPv4 address for the given network interface name.
 
-    Args:
-        ifname (str): Interface name to retreive the IP address from.
+    :param ifname: Interface name to retreive the IP address from.
+    :type ifname: str
 
-    Examples:
-        >>> ifaddr('lo')
-        <snare.net.addr.Ip 127.0.0.1>
+    :Example:
+
+    >>> ifaddr('lo')
+    <snare.net.addr.Ip 127.0.0.1>
     """
     return Ip(_ifctl(ifname, 0x8915)[20:24]) # SIOCGIFADDR
 
 def ifmask(ifname):
     """Retrieves the IPv4 network mask for the given network interface name.
 
-    Args:
-        ifname (str): Interface name to retreive the IP network mask from.
+    :param ifname: Interface name to retreive the IP network mask from.
+    :type ifname: str
 
-    Examples:
-        >>> ifmask('lo')
-        <snare.net.addr.Ip 255.0.0.0>
+    :Example:
+
+    >>> ifmask('lo')
+    <snare.net.addr.Ip 255.0.0.0>
     """
     return Ip(_ifctl(ifname, 0x891b)[20:24]) # SIOCGIFNETMASK
 
 def ifhwaddr(ifname):
     """Retrieves the Ethernet MAC address for the given network interface name.
 
-    Args:
-        ifname (str): Interface name to retreive the MAC address from.
+    :param ifname: Interface name to retreive the MAC address from.
+    :type ifname: str
 
-    Examples:
-        >>> ifhwaddr('lo')
-        <snare.net.addr.Mac 00:00:00:00:00:00>
+    :Example:
+
+    >>> ifhwaddr('lo')
+    <snare.net.addr.Mac 00:00:00:00:00:00>
     """
     return Mac(_ifctl(ifname, 0x8927)[18:24]) # SIOCGIFHWADDR
 
 def parsecidr(ipnet):
     """Parses and returns the given CIDR string as an IpNet subnet object.
 
-    Args:
-        ipnet (str): String representation of the subnet.
+    :param ipnet: String representation of the subnet.
+    :type ipnet: str
 
-    Examples:
-        >>> parsecidr('172.16.224.70/20')
-        <snare.net.addr.IpNet 172.16.224.70/20>
+    :Example:
+
+    >>> parsecidr('172.16.224.70/20')
+    <snare.net.addr.IpNet 172.16.224.70/20>
     """
     ipstr, maskstr = ipnet.split('/')
     maskint = 0xffffffff ^ ((0x00000001 << (32-int(maskstr)))-1)
@@ -218,11 +222,12 @@ def parsecidr(ipnet):
 def ifcidr(ifname):
     """Retrieves the IPv4 address and network mask from the given inerface name.
 
-    Args:
-        ifname (str): Interface name to retreive the IP address and network mask from.
+    :param ifname: Interface name to retreive the IP address and network mask from.
+    :type ifname: str
 
-    Examples:
-        >>> ifcidr('lo')
-        <snare.net.addr.IpNet 127.0.0.1/8>
+    :Example:
+
+    >>> ifcidr('lo')
+    <snare.net.addr.IpNet 127.0.0.1/8>
     """
     return IpNet(ifaddr(ifname), ifmask(ifname))
